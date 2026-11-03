@@ -22,7 +22,7 @@ done
 
 mkdir -p "$cfg/lib"
 cp -f "$here"/lib/*.sh "$cfg/lib/"
-for f in helixsr optiscaler-reset common hdr dualsense dualsense-ge gamemode afmf nvapi reflex optiscaler-log optipatcher; do
+for f in helixsr optiscaler-reset hdr dualsense dualsense-ge gamemode afmf nvapi reflex optiscaler-log optipatcher; do
     [ -e "$cfg/$f.conf" ] && echo "NOTE: $cfg/$f.conf is obsolete; remove it once no game sources it"
 done
 echo "confs installed to $cfg (changed files backed up as .bak), scripts in $cfg/lib"

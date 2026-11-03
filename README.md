@@ -22,7 +22,7 @@ Steam launch options stay:
 scb -- %command%
 ```
 
-`scb.conf` is sourced for every game. The other confs are opt-in per game. Create `~/.config/scopebuddy/AppID/<appid>.conf`, put settings above the `source` line, then source the conf:
+`scb.conf` is sourced for every game. If `~/.config/scopebuddy/common.conf` exists, `scb.conf` sources it too (after the plugin reset, before its own settings). It is yours: not in this repo, so `setup.sh` never creates, overwrites, backs up or removes it. Put settings for every game there, for example `source "$SCB_CONFIGDIR/fsr-multi.conf"` or `export MANGOHUD_CONFIG=...`. The other confs are opt-in per game. Create `~/.config/scopebuddy/AppID/<appid>.conf`, put settings above the `source` line, then source the conf:
 
 ```sh
 export PROTON_USE_OPTISCALER=nightly
