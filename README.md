@@ -65,6 +65,7 @@ opti_config FSR.UpscalerIndex=0 FSR.Fsr4GpuSupport=2
 | `mlfg.conf` | Forces FSR 4 (ML) frame generation instead of the FSR 3.1 fallback, with the RDNA3 FP8-to-FP16 workaround. Sets `FSR.FGIndex=0` under OptiScaler nightly. | Also needs `fsr4.conf` |
 | `mfgunlocker.conf` | Installs MFG Unlocker as an OptiScaler plugin for XeMFG (up to 6x). | `PROTON_USE_OPTISCALER=nightly` (OptiScaler 10). Don't combine with `mlfg.conf`. |
 | `opennr.conf` | Installs the OpenNR-OptiScaler fork (DLSS 5 neural rendering bridge, FSR-RR, XeFG) as a proxy DLL in the game folder. Unsets `PROTON_USE_OPTISCALER` for that game. | Neural backend files in `$SCB_DLLS/opennr/backend/` |
+| `luma.conf` | Installs a [Luma Framework](https://github.com/Filoppi/Luma-Framework) HDR/rendering mod (ReShade addon) next to the game exe, picked per game with `LUMA_MOD=<name>` or guessed from the Steam folder name. Updates from the rolling `latest-N` release. | Python 3. With OptiScaler on, Luma's ReShade is loaded through OptiScaler (`Plugins.LoadReshade`) instead of as `dxgi.dll`. Don't combine with `opennr.conf`. |
 | `llayer-fg.conf` | Swaps in a locally built Korthos low-latency layer with frame-gen pacing (PR #37). Use it instead of `LOW_LATENCY_LAYER=1`. | Build from `~/Projects/llayer-build/build.sh` |
 
 Each conf has a header comment listing its settings (for example `FSR4_MODE`, `FSR4_DLL_TARGET`, `OPENNR_MODE`, `MFGUNLOCKER_TAG`). Those headers are the reference for the options.
@@ -81,10 +82,10 @@ The confs are thin. Each one sources a script of the same name in `lib/`, and th
 | `optiscaler-reset.sh` | Removes the plugins and DLLs our confs installed, at the start of each launch. Skip it with `SCB_NO_RESET=1`. |
 | `optipatcher.sh` | Updates OptiPatcher every 6 hours and installs it in the prefix. Skip it with `SCB_NO_OPTIPATCHER=1`. |
 | `cyboman.sh`, `cyboman-release.sh` | Logic and release lookup for `cyboman.conf` and `fsr-multi.conf`. |
-| `fsr-multi.sh`, `fsr412.sh`, `mfgunlocker.sh`, `opennr.sh`, `llayer-fg.sh` | Logic for the conf of the same name. |
+| `fsr-multi.sh`, `fsr412.sh`, `mfgunlocker.sh`, `opennr.sh`, `luma.sh`, `llayer-fg.sh` | Logic for the conf of the same name. |
 
 ## Files and logs
 
 - Downloads: `~/.local/share/scopebuddy-dlls/<component>/` (`$SCB_DLLS`).
-- Logs: `~/.config/scopebuddy/<conf>.log` (`cyboman`, `fsr-multi`, `opennr`).
+- Logs: `~/.config/scopebuddy/<conf>.log` (`cyboman`, `fsr-multi`, `opennr`, `luma`).
 - Per-game switches go in launch options before `scb`: `SCB_NO_RESET=1`, `SCB_NO_OPTIPATCHER=1`.
