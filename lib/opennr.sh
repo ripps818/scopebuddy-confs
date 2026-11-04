@@ -9,6 +9,7 @@ scb_guard_begin
 OPENNR_ROOT="${OPENNR_ROOT:-$SCB_DLLS/opennr}"
 OPENNR_MODE="${OPENNR_MODE:-on}"
 OPENNR_PROXY="${OPENNR_PROXY:-dxgi.dll}"
+OPENNR_UMU_SECONDS="${OPENNR_UMU_SECONDS:-180}"
 OPENNR_CHECK_HOURS="${OPENNR_CHECK_HOURS:-24}"
 OPENNR_LOG="${SCB_CONFIGDIR:-$HOME/.config/scopebuddy}/opennr.log"
 
@@ -55,56 +56,49 @@ _on_latest() {
     find "$OPENNR_ROOT" -mindepth 1 -maxdepth 1 -type d -name 'v*' -printf '%f\n' 2>/dev/null | sort -rV | head -n1
 }
 
-_on_install() {   # gamedir tag
-    local gd="$1" tag="$2" src="$OPENNR_ROOT/$2" b
-    if [ "$(cat "$gd/.opennr-tag" 2>/dev/null)" != "$tag" ] || [ ! -f "$gd/$OPENNR_PROXY" ]; then
-        cp -f "$src/OptiScaler.dll" "$gd/$OPENNR_PROXY"
-        cp -rf "$src/OptiScaler" "$src/shaders" "$gd/"
-        [ -f "$gd/OptiScaler.ini" ] || cp -f "$src/OptiScaler.ini" "$gd/OptiScaler.ini"
-        printf '%s' "$tag" >"$gd/.opennr-tag"
-        _on_log "installed $tag into $gd as $OPENNR_PROXY"
-    fi
-    for b in dlssnr_on_amd_weights.bin; do
-        [ -f "$OPENNR_ROOT/backend/$b" ] && cp -nf "$OPENNR_ROOT/backend/$b" "$gd/$b"
-    done
-    if [ -f "$OPENNR_ROOT/backend/dlssnr_amd_pass1.dll" ]; then
-        for b in 1 2 3; do cp -nf "$OPENNR_ROOT/backend/dlssnr_amd_pass1.dll" "$gd/dlssnr_amd_pass$b.dll"; done
-    fi
-    if [ -n "${OPENNR_NR_BACKEND:-}" ]; then
-        sed -i "s/^NrBackend *=.*/NrBackend=$OPENNR_NR_BACKEND/" "$gd/OptiScaler.ini"
-    fi
+# OPENNR_NR_BACKEND goes into the prefix's OptiScaler.ini, once Proton has written it
+_on_ini() {   # umu-dir
+    [ -n "${OPENNR_NR_BACKEND:-}" ] && [ -f "$1/OptiScaler.ini" ] && sed -i "s/^NrBackend *=.*/NrBackend=$OPENNR_NR_BACKEND/" "$1/OptiScaler.ini"
+    return 0
 }
 
-if declare -F SCB_GetGameDir >/dev/null && [ -n "${command:-}" ]; then
-    _on_gd=$(SCB_GetGameDir "$command" 2>/dev/null)
-    if [ ! -d "${_on_gd:-}" ]; then
-        _on_log "couldn't find the game folder from: $command"
-    elif [ "$OPENNR_MODE" = on ]; then
-        mkdir -p "$OPENNR_ROOT/backend"
-        if command -v flock >/dev/null && exec {_on_lockfd}>"$OPENNR_ROOT/.lock"; then
-            flock -w 300 "$_on_lockfd"
-        fi
-        _on_update
-        _on_tag=$(_on_latest)
-        if [ -n "$_on_tag" ]; then
-            _on_install "$_on_gd" "$_on_tag"
-            case "$WINEDLLOVERRIDES" in *"${OPENNR_PROXY%.dll}="*) ;; *) export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}${OPENNR_PROXY%.dll}=n,b" ;; esac
-            unset PROTON_USE_OPTISCALER PROTON_OPTISCALER_NAME
-        else
-            _on_log "no release downloaded yet; see $OPENNR_LOG"
-        fi
-        [ -n "${_on_lockfd:-}" ] && exec {_on_lockfd}>&-
-    elif [ "$OPENNR_MODE" = off ]; then
-        rm -f "$_on_gd/$OPENNR_PROXY" "$_on_gd/.opennr-tag"
-        _on_log "removed $OPENNR_PROXY from $_on_gd"
-    else
-        _on_log "unknown OPENNR_MODE='$OPENNR_MODE' (use on|off)"
-    fi
-else
-    _on_log "SCB_GetGameDir or \$command unavailable; nothing done"
+_on_gd=""
+declare -F SCB_GetGameDir >/dev/null && [ -n "${command:-}" ] && _on_gd=$(SCB_GetGameDir "$command" 2>/dev/null) || true
+# remove a game-folder install left by an older version of this conf (the only thing ever touched there)
+if [ -n "$_on_gd" ] && [ -f "$_on_gd/.opennr-tag" ]; then
+    rm -f "$_on_gd/$OPENNR_PROXY" "$_on_gd/.opennr-tag"; _on_log "removed the old game-folder install from $_on_gd"
 fi
 
-unset -f _on_log _on_update _on_latest _on_install
-unset _on_gd _on_tag _on_lockfd
+case "$OPENNR_MODE" in
+    on)
+        if [ -z "${STEAM_COMPAT_DATA_PATH:-}" ]; then
+            _on_log "no Proton prefix (STEAM_COMPAT_DATA_PATH unset); nothing done"
+        else
+            scb_opti_on || export PROTON_USE_OPTISCALER=1   # Proton's OptiScaler is what gets replaced
+            [ "$OPENNR_PROXY" != dxgi.dll ] && export PROTON_OPTISCALER_NAME="$OPENNR_PROXY"
+            mkdir -p "$OPENNR_ROOT/backend"
+            if command -v flock >/dev/null && exec {_on_lockfd}>"$OPENNR_ROOT/.lock"; then
+                flock -w 300 "$_on_lockfd"
+            fi
+            _on_update
+            _on_tag=$(_on_latest)
+            if [ -n "$_on_tag" ]; then
+                SCB_UMU_EXTRA=()
+                [ -f "$OPENNR_ROOT/backend/dlssnr_on_amd_weights.bin" ] && SCB_UMU_EXTRA+=("$OPENNR_ROOT/backend/dlssnr_on_amd_weights.bin:dlssnr_on_amd_weights.bin")
+                if [ -f "$OPENNR_ROOT/backend/dlssnr_amd_pass1.dll" ]; then
+                    for _on_b in 1 2 3; do SCB_UMU_EXTRA+=("$OPENNR_ROOT/backend/dlssnr_amd_pass1.dll:dlssnr_amd_pass$_on_b.dll"); done
+                fi
+                scb_umu_start "$OPENNR_ROOT/$_on_tag" "$OPENNR_UMU_SECONDS" _on_log "OpenNR $_on_tag" _on_ini
+            else
+                _on_log "no release downloaded yet; see $OPENNR_LOG"
+            fi
+            [ -n "${_on_lockfd:-}" ] && exec {_on_lockfd}>&-
+        fi ;;
+    off) ;;
+    *) _on_log "unknown OPENNR_MODE='$OPENNR_MODE' (use on|off)" ;;
+esac
+
+unset -f _on_log _on_update _on_latest _on_ini
+unset _on_gd _on_tag _on_lockfd _on_b SCB_UMU_EXTRA
 
 scb_guard_end

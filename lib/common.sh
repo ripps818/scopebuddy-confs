@@ -64,3 +64,54 @@ scb_unzip_all() {   # zip destdir
 scb_opti_on() {
     case "${PROTON_USE_OPTISCALER:-}" in ""|0|false|no|off) return 1 ;; *) return 0 ;; esac
 }
+
+# --- Replace Proton's OptiScaler (in the prefix) with another OptiScaler build -----------------
+# Nothing is written to the game folder. Proton puts its own OptiScaler in
+# <prefix>/drive_c/windows/system32/umu on every launch, after the confs ran, and md5-checks its files
+# before enabling it. So a background loop waits for wineserver (Proton is done by then) and keeps
+# overwriting those files with the build in $1. OptiScaler.ini is never touched (Proton writes
+# PROTON_OPTISCALER_CONFIG into it). SCB_UMU_EXTRA=("src-file:name-in-umu" ...) adds more root files.
+scb_umu_sync() {   # build-dir umu-dir
+    local src="$1" umu="$2" t f rel e
+    for t in "$umu/OptiScaler.dll" "$umu/${PROTON_OPTISCALER_NAME:-dxgi.dll}"; do
+        [ -f "$t" ] && ! cmp -s "$src/OptiScaler.dll" "$t" && cp -f "$src/OptiScaler.dll" "$t"
+    done
+    mkdir -p "$umu/OptiScaler" 2>/dev/null || return 0
+    while IFS= read -r f; do
+        rel=${f#"$src/"}
+        [ -d "$umu/$rel" ] && rm -rf "$umu/$rel"   # a file name that an earlier version made into a folder
+        cmp -s "$f" "$umu/$rel" 2>/dev/null && continue
+        case $rel in */*) mkdir -p "$umu/${rel%/*}" 2>/dev/null ;; esac
+        cp -f "$f" "$umu/$rel"
+    done < <(find "$src/OptiScaler" "$src/shaders" -type f 2>/dev/null)
+    # OptiScaler looks for the NVIDIA/nvapi DLLs in OptiScaler/; Proton keeps them one level up
+    for f in nvngx_dlss nvngx_dlssd nvngx_dlssg fakenvapi; do
+        [ -e "$umu/$f.dll" ] && [ ! -e "$umu/OptiScaler/$f.dll" ] && ln -sf "../$f.dll" "$umu/OptiScaler/$f.dll"
+    done
+    for e in ${SCB_UMU_EXTRA[@]+"${SCB_UMU_EXTRA[@]}"}; do
+        [ -f "${e%%:*}" ] && ! cmp -s "${e%%:*}" "$umu/${e#*:}" && cp -f "${e%%:*}" "$umu/${e#*:}"
+    done
+    return 0
+}
+
+scb_umu_start() {   # build-dir seconds logfunc label [hook-function, run once with the umu dir after the first swap]
+    local src="$1" secs="$2" log="$3" label="$4" hook="${5:-}"
+    local umu="$STEAM_COMPAT_DATA_PATH/pfx/drive_c/windows/system32/umu"
+    mkdir -p "$umu" || return 1
+    "$log" "umu mode: syncing $label into $umu for up to ${secs}s (after wine starts; nothing goes in the game folder)"
+    (
+        n=0; w=0; swaps=0
+        while ! pgrep -x wineserver >/dev/null && [ "$w" -lt 300 ]; do w=$((w + 1)); sleep 0.2; done
+        while [ "$n" -lt $((secs * 5)) ]; do
+            scb_umu_sync "$src" "$umu"
+            if [ "$swaps" = 0 ] && [ -f "$umu/OptiScaler.dll" ] && cmp -s "$src/OptiScaler.dll" "$umu/OptiScaler.dll"; then
+                swaps=1; "$log" "umu: $label in place after $((n / 5))s"
+                [ -n "$hook" ] && "$hook" "$umu"
+            fi
+            # stop once wine exits so Steam doesn't wait on this loop after the game closes
+            pgrep -x wineserver >/dev/null || break
+            n=$((n + 1)); sleep 0.2
+        done
+    ) </dev/null >/dev/null 2>&1 &
+    disown 2>/dev/null || true
+}
