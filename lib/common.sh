@@ -40,6 +40,12 @@ scb_fetch() {   # url dest [max-seconds]
     else return 1; fi
 }
 
+scb_get() {   # url [header]: body to stdout
+    if command -v curl >/dev/null 2>&1; then scb_host curl -fsSL --connect-timeout 10 --max-time 30 ${2:+-H "$2"} "$1"
+    elif command -v wget >/dev/null 2>&1; then scb_host wget -q -T 30 -O - ${2:+--header="$2"} "$1"
+    else return 1; fi
+}
+
 scb_fresh() {   # stamp-file hours: touched within that many hours
     [ -f "$1" ] && [ -z "$(find "$1" -mmin +$(($2 * 60)) 2>/dev/null)" ]
 }

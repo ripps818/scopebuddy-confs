@@ -23,7 +23,6 @@ _fm_log() { scb_log "$FSRMULTI_LOG" fsr-multi "$1"; }
 _fm_cyboman_update() {
     local stamp="$FSRMULTI_SRC/.cyboman-check" tag prefix asset tmp sums want got v member key name n=0
     scb_fresh "$stamp" "$FSRMULTI_CHECK_HOURS" && return 0
-    command -v git >/dev/null || { _fm_log "cyboman: needs git to look up the latest release"; return 1; }
     tag=$(scb_cyboman_tag)
     [ -n "$tag" ] || { _fm_log "cyboman: couldn't look up the latest release"; return 1; }
     if [ "$(cat "$FSRMULTI_SRC/cyboman.tag" 2>/dev/null)" = "$tag $FSRMULTI_TARGET" ]; then : >"$stamp"; return 0; fi

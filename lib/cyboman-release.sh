@@ -2,9 +2,15 @@
 # shared by cyboman.sh and fsr-multi.sh. Needs common.sh.
 _CYBOMAN_GH="https://github.com/zgauthier2000/fsr4-shader-performance-overrides"
 
-scb_cyboman_tag() {   # newest dll-* release tag (needs git)
-    scb_host timeout 20 git ls-remote --tags --refs "$_CYBOMAN_GH.git" 'dll-*' 2>/dev/null \
-        | sed 's|.*refs/tags/||' | sort -V | tail -n1
+scb_cyboman_tag() {   # newest dll-* release tag: git ls-remote if git is installed, else the GitHub API
+    local tag=""
+    if command -v git >/dev/null 2>&1; then
+        tag=$(scb_host timeout 20 git ls-remote --tags --refs "$_CYBOMAN_GH.git" 'dll-*' 2>/dev/null \
+              | sed 's|.*refs/tags/||' | sort -V | tail -n1)
+    fi
+    if [ -n "$tag" ]; then printf '%s\n' "$tag"; return 0; fi
+    scb_get "https://api.github.com/repos/${_CYBOMAN_GH#https://github.com/}/releases?per_page=100" 2>/dev/null \
+        | grep -o '"tag_name": *"dll-[^"]*"' | sed 's/.*"\(dll-[^"]*\)"$/\1/' | sort -V | tail -n1
 }
 
 scb_cyboman_prefix() {   # target -> regex for that GPU target's zip name

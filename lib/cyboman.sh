@@ -61,9 +61,7 @@ _fsr4_dll_tag() {
     if [ -s "$cache" ] && scb_fresh "$cache" "$FSR4_DLL_CHECK_HOURS"; then
         cat "$cache"; return 0
     fi
-    if command -v git >/dev/null; then
-        tag=$(scb_cyboman_tag)
-    fi
+    tag=$(scb_cyboman_tag)
     if [ -n "$tag" ]; then
         printf '%s\n' "$tag" >"$cache"; printf '%s' "$tag"; return 0
     fi
@@ -71,20 +69,66 @@ _fsr4_dll_tag() {
     return 1
 }
 
-# Fast-forward the repo clone (shaders in prebuilt/ and prebuilt-lossy/), at most
-# once per FSR4_REPO_CHECK_HOURS. Failures are logged and ignored.
+# Keep the shader sets in $FSR4_REPO up to date, at most once per FSR4_REPO_CHECK_HOURS. Failures are
+# logged and ignored. With git installed a missing/empty folder becomes a shallow sparse clone (one commit,
+# only prebuilt/, prebuilt-lossy/ and tools/), updated by fetching that one commit again; any other git
+# clone is git pulled. Without git (or in a folder that already holds a tarball download) the same three
+# folders come from GitHub's tarball, which needs only curl and tar. Your own build in override/ is never touched.
 _fsr4_repo_update() {
-    [ -d "$FSR4_REPO/.git" ] && command -v git >/dev/null || return 0
-    local stamp="$FSR4_REPO/.git/scb-last-pull" out
-    if scb_fresh "$stamp" "$FSR4_REPO_CHECK_HOURS"; then
+    local gstamp out
+    if [ ! -d "$FSR4_REPO/.git" ] && command -v git >/dev/null \
+       && { [ ! -e "$FSR4_REPO" ] || [ -z "$(ls -A "$FSR4_REPO" 2>/dev/null)" ]; }; then
+        if scb_host timeout 120 git clone -q --depth 1 --filter=blob:none --sparse "$_CYBOMAN_GH.git" "$FSR4_REPO" 2>/dev/null \
+           && git -C "$FSR4_REPO" sparse-checkout set prebuilt prebuilt-lossy tools 2>/dev/null \
+           && _fsr4_has_spv "$FSR4_REPO/prebuilt"; then
+            _fsr4_log "cloned the shader repo (shallow, sparse) ($(git -C "$FSR4_REPO" rev-parse --short HEAD 2>/dev/null))"
+            : >"$FSR4_REPO/.git/scb-last-pull"
+            return 0
+        fi
+        _fsr4_log "shallow clone failed; trying the tarball"
+        rm -rf "${FSR4_REPO:?}"
+    fi
+    if [ -d "$FSR4_REPO/.git" ]; then
+        command -v git >/dev/null || return 0
+        gstamp="$FSR4_REPO/.git/scb-last-pull"
+        scb_fresh "$gstamp" "$FSR4_REPO_CHECK_HOURS" && return 0
+        if [ "$(git -C "$FSR4_REPO" rev-parse --is-shallow-repository 2>/dev/null)" = true ]; then
+            out=$(scb_host timeout 60 git -C "$FSR4_REPO" fetch -q --depth 1 origin 2>&1 \
+                  && scb_host git -C "$FSR4_REPO" reset -q --hard FETCH_HEAD 2>&1)
+        else
+            out=$(scb_host timeout 30 git -C "$FSR4_REPO" pull --ff-only -q 2>&1)
+        fi
+        # shellcheck disable=SC2181
+        if [ $? -eq 0 ]; then
+            : >"$gstamp"
+            _fsr4_log "repo up to date ($(git -C "$FSR4_REPO" rev-parse --short HEAD 2>/dev/null))"
+        else
+            _fsr4_log "git update failed, using the repo as is: ${out//$'\n'/ }"
+        fi
         return 0
     fi
-    if out=$(scb_host timeout 30 git -C "$FSR4_REPO" pull --ff-only -q 2>&1); then
-        : >"$stamp"
-        _fsr4_log "repo up to date ($(git -C "$FSR4_REPO" rev-parse --short HEAD 2>/dev/null))"
+    command -v tar >/dev/null || return 0
+    local stamp="$FSR4_REPO/.scb-checked" shafile="$FSR4_REPO/.scb-sha" sha tmp d
+    scb_fresh "$stamp" "$FSR4_REPO_CHECK_HOURS" && return 0
+    mkdir -p "$FSR4_REPO" || return 0
+    sha=$(scb_get "https://api.github.com/repos/${_CYBOMAN_GH#https://github.com/}/commits/main" "Accept: application/vnd.github.sha" 2>/dev/null)
+    [[ $sha =~ ^[0-9a-f]{40}$ ]] || { _fsr4_log "couldn't look up the repo's latest commit; using the repo as is"; return 0; }
+    if [ "$(cat "$shafile" 2>/dev/null)" = "$sha" ] && [ -d "$FSR4_REPO/prebuilt" ]; then : >"$stamp"; return 0; fi
+    tmp=$(mktemp -d "$FSR4_REPO/.dl.XXXXXX") || return 0
+    _fsr4_log "downloading the shader repo ${sha:0:7}"
+    if scb_fetch "$_CYBOMAN_GH/archive/$sha.tar.gz" "$tmp/r.tgz" 600 \
+       && mkdir "$tmp/x" && scb_host tar -xzf "$tmp/r.tgz" -C "$tmp/x" --strip-components=1 \
+            --wildcards '*/prebuilt/*' '*/prebuilt-lossy/*' '*/tools/*' 2>/dev/null \
+       && _fsr4_has_spv "$tmp/x/prebuilt"; then
+        for d in prebuilt prebuilt-lossy tools; do
+            [ -d "$tmp/x/$d" ] && rm -rf "${FSR4_REPO:?}/$d" && mv "$tmp/x/$d" "$FSR4_REPO/$d"
+        done
+        printf '%s\n' "$sha" >"$shafile"; : >"$stamp"
+        _fsr4_log "shader repo up to date (${sha:0:7})"
     else
-        _fsr4_log "git pull failed, using the repo as is: ${out//$'\n'/ }"
+        _fsr4_log "couldn't download or extract the shader repo; using it as is"
     fi
+    rm -rf "$tmp"
 }
 
 # Make sure the requested patched DLL is downloaded and verified.
@@ -110,7 +154,7 @@ _fsr4_dll_ensure() {
             _fsr4_log "offline; using cached $build DLL ($(cat "$dir/TAG" 2>/dev/null))"
             _fsr4_dll_path="$dir/amd_fidelityfx_upscaler_dx12.dll"; return 0
         fi
-        _fsr4_log "couldn't find a dll-* release tag (no git or no network)"; return 1
+        _fsr4_log "couldn't find a dll-* release tag (no git and no network?)"; return 1
     fi
 
     # Already have this tag?
@@ -311,7 +355,7 @@ case "$_fsr4_mode" in
         fi
         export VKD3D_SHADER_DUMP_PATH="$(_fsr4_winpath "$_fsr4_dir")"
         _fsr4_log "dump -> $VKD3D_SHADER_DUMP_PATH (FSR 4 on at your usual resolution/preset, get into gameplay, quit)"
-        _fsr4_log "then: cd '$FSR4_REPO' && ./check_prebuilt.sh '$_fsr4_dir'  (if it differs: ./build_override.sh '$_fsr4_dir')"
+        _fsr4_log "then: cd '$FSR4_REPO/tools' && ./check_prebuilt.sh '$_fsr4_dir'  (if it differs: ./build_override.sh '$_fsr4_dir')"
         _fsr4_check_dll
         ;;
     off)
