@@ -67,7 +67,6 @@ opti_config FSR.UpscalerIndex=0 FSR.Fsr4GpuSupport=2
 | `opennr.conf` | Installs the OpenNR-OptiScaler fork (DLSS 5 neural rendering bridge, FSR-RR, XeFG) by overwriting Proton's OptiScaler in the prefix (nothing goes in the game folder). Sets `PROTON_USE_OPTISCALER=1` if it is unset. | Neural backend files in `$SCB_DLLS/opennr/backend/` |
 | `venom.conf` | Installs [OptiScaler Venom](https://github.com/LorenzoKy/Optiscaler-Venom) (OptiScaler build with extra OSD rows / graphs and FG timing) by overwriting Proton's OptiScaler in the prefix (nothing goes in the game folder). `VENOM_CHANNEL=release` or `nightly`, or pin with `VENOM_TAG`. Turns on `LOW_LATENCY_LAYER`. A background loop waits for wine and overwrites Proton's OptiScaler. | `bsdtar` or `7z`, Python 3. Don't combine with `opennr.conf`. |
 | `luma.conf` | Installs a [Luma Framework](https://github.com/Filoppi/Luma-Framework) HDR/rendering mod (ReShade addon) next to the game exe, picked per game with `LUMA_MOD=<name>` or guessed from the Steam folder name. Updates from the rolling `latest-N` release. | Python 3. With OptiScaler on, Luma's ReShade is loaded through OptiScaler (`Plugins.LoadReshade`) instead of as `dxgi.dll`. Don't combine with `opennr.conf`. |
-| `llayer-fg.conf` | Swaps in a locally built Korthos low-latency layer with frame-gen pacing (PR #37). Use it instead of `LOW_LATENCY_LAYER=1`. | Build from `~/Projects/llayer-build/build.sh` |
 
 Each conf has a header comment listing its settings (for example `FSR4_MODE`, `FSR4_DLL_TARGET`, `OPENNR_MODE`, `MFGUNLOCKER_TAG`). Those headers are the reference for the options.
 
@@ -83,7 +82,7 @@ The confs are thin. Each one sources a script of the same name in `lib/`, and th
 | `optiscaler-reset.sh` | Removes the plugins and DLLs our confs installed, at the start of each launch. Skip it with `SCB_NO_RESET=1`. |
 | `optipatcher.sh` | Updates OptiPatcher every 6 hours and installs it in the prefix. Skip it with `SCB_NO_OPTIPATCHER=1`. |
 | `cyboman.sh`, `cyboman-release.sh` | Logic and release lookup for `cyboman.conf` and `fsr-multi.conf`. |
-| `fsr-multi.sh`, `fsr412.sh`, `mfgunlocker.sh`, `opennr.sh`, `venom.sh`, `luma.sh`, `llayer-fg.sh` | Logic for the conf of the same name. |
+| `fsr-multi.sh`, `fsr412.sh`, `mfgunlocker.sh`, `opennr.sh`, `venom.sh`, `luma.sh` | Logic for the conf of the same name. |
 
 ## Files and logs
 
