@@ -1,14 +1,14 @@
-# lib/fsr4-sdk.sh: logic for fsr4-sdk.conf (see that file for usage and FSR4SDK_CLEANUP).
+# lib/fsrsdk.sh: logic for fsrsdk.conf (see that file for usage and FSR4SDK_CLEANUP).
 _scb_lib="${BASH_SOURCE[0]%/*}"
 source "$_scb_lib/common.sh"
 unset _scb_lib
 
 export LOW_LATENCY_LAYER=1
 
-FSR4SDK_ROOT="${FSR4SDK_ROOT:-$SCB_DLLS/fsr4-sdk}"
+FSR4SDK_ROOT="${FSR4SDK_ROOT:-$SCB_DLLS/fsrsdk}"
 FSR4SDK_REF="${FSR4SDK_REF:-main}"
 FSR4SDK_CHECK_HOURS="${FSR4SDK_CHECK_HOURS:-24}"
-FSR4SDK_LOG="${SCB_CONFIGDIR:-$HOME/.config/scopebuddy}/fsr4-sdk.log"
+FSR4SDK_LOG="${SCB_CONFIGDIR:-$HOME/.config/scopebuddy}/fsrsdk.log"
 FSR4SDK_DST="${STEAM_COMPAT_DATA_PATH:-}/pfx/drive_c/windows/system32/umu/OptiScaler"
 FSR4SDK_FILES="amd_fidelityfx_upscaler_dx12.dll amd_fidelityfx_upscaler_vk.dll"
 _FSR4SDK_REPO="GPUOpen-LibrariesAndSDKs/FidelityFX-SDK"
@@ -17,7 +17,7 @@ _FSR4SDK_PATH="Kits/FidelityFX/signedbin"
 # the old name for the cleanup flag
 [ "${FSR412_CLEANUP:-0}" = 1 ] && FSR4SDK_CLEANUP=1
 
-_fs_log() { scb_log "$FSR4SDK_LOG" fsr4-sdk "$*"; }
+_fs_log() { scb_log "$FSR4SDK_LOG" fsrsdk "$*"; }
 
 # Download the DLLs for the newest commit that touched signedbin/ (or the pinned ref) into $FSR4SDK_ROOT.
 _fs_update() {

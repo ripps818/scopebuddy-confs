@@ -9,8 +9,8 @@
 # Only our own files are touched: Proton's OptiScaler install, OptiScaler.ini and anything else in
 # the folders are left alone. Settings a conf added to OptiScaler.ini (e.g. FGOutput=XeFG) stay
 # until Proton writes a fresh ini; put the settings you want in PROTON_OPTISCALER_CONFIG.
-# fsr4-sdk.conf's DLLs are cleared too, but only copies byte-identical to the ones in
-# ~/.local/share/scopebuddy-dlls/fsr4-sdk (Proton's own files are kept); fsr4-sdk.conf copies them back.
+# fsrsdk.conf's DLLs are cleared too, but only copies byte-identical to the ones in
+# ~/.local/share/scopebuddy-dlls/fsrsdk (Proton's own files are kept); fsrsdk.conf copies them back.
 # Turn the reset off for a game with SCB_NO_RESET=1 in its launch options.
 _scb_lib="${BASH_SOURCE[0]%/*}"
 source "$_scb_lib/common.sh"
@@ -31,7 +31,7 @@ if [ "${SCB_NO_RESET:-0}" != 1 ] && [ -n "${STEAM_COMPAT_DATA_PATH:-}" ]; then
     done
     rmdir "$_reset_umu/OptiScaler/custom" 2>/dev/null || true
     _reset_d="$_reset_umu/OptiScaler"
-    for _reset_src in "$SCB_DLLS/fsr4-sdk" "$SCB_DLLS/fsr4-4.1.2"; do   # fsr4-4.1.2: the old folder name
+    for _reset_src in "$SCB_DLLS/fsrsdk" "$SCB_DLLS/fsr4-4.1.2"; do   # fsr4-4.1.2: the old folder name
         for _reset_f in amd_fidelityfx_upscaler_dx12.dll amd_fidelityfx_upscaler_vk.dll; do
             if [ -f "$_reset_d/$_reset_f" ] && cmp -s "$_reset_src/$_reset_f" "$_reset_d/$_reset_f"; then
                 rm -f "$_reset_d/$_reset_f" 2>/dev/null || true
