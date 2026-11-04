@@ -16,7 +16,7 @@ done
 mkdir -p "$dlls"
 for m in mfg-unlocker=mfg-unlocker optipatcher=optipatcher fsr-multi=fsr-multi helixsr-scb=helixsr opennr-scb=opennr \
          fsr4-dll=cyboman fsr4-shader-performance-overrides=cyboman-repo fsr4-dump=cyboman-dump \
-         fsr4-4.1.2=fsr4-4.1.2 fsr4-driver-4.1.2=fsr4-driver-4.1.2 low-latency-layer-fg=low-latency-layer-fg; do
+         fsr4-4.1.2=fsr4-sdk fsr4-driver-4.1.2=fsr4-driver-4.1.2 low-latency-layer-fg=low-latency-layer-fg; do
     [ -d "$data/${m%%=*}" ] && [ ! -e "$dlls/${m#*=}" ] && mv "$data/${m%%=*}" "$dlls/${m#*=}" && echo "moved ${m%%=*} -> $dlls/${m#*=}"
 done
 
@@ -27,14 +27,5 @@ for f in helixsr optiscaler-reset hdr dualsense dualsense-ge gamemode afmf nvapi
 done
 echo "confs installed to $cfg (changed files backed up as .bak), scripts in $cfg/lib"
 
-# Auto-downloaded on first launch: cyboman, fsr-multi (cyboman/hlx), opennr, mfgunlocker, optipatcher.
-# Manual (not redistributed): AMD FSR 4.1.2 DLLs for fsr412.conf. Driver files (fsr4-driver-4.1.2) are not handled here.
-declare -A need=(
-    ["fsr4-4.1.2"]="amd_fidelityfx_upscaler_dx12.dll amd_fidelityfx_upscaler_vk.dll"
-)
-for d in "${!need[@]}"; do
-    mkdir -p "$dlls/$d"
-    for f in ${need[$d]}; do
-        [ -s "$dlls/$d/$f" ] || echo "MISSING: $dlls/$d/$f"
-    done
-done
+# Auto-downloaded on first launch: cyboman, fsr-multi (cyboman/hlx), fsr4-sdk, opennr, venom, mfgunlocker, optipatcher.
+# Not handled here: opennr's neural backend files, the HelixSR DLSS network build, and the driver files (fsr4-driver-4.1.2).

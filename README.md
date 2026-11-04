@@ -11,7 +11,6 @@ Config snippets for [ScopeBuddy](https://github.com/OpenGamingCollective/scopebu
 - Copies `*.conf` to `~/.config/scopebuddy/` and `lib/*.sh` to `~/.config/scopebuddy/lib/`.
 - A changed existing conf is backed up as `<name>.conf.bak`.
 - Moves old per-tool download folders into `~/.local/share/scopebuddy-dlls/` (`$SCB_DLLS`).
-- Prints `MISSING:` for the AMD FSR 4.1.2 DLLs needed by `fsr412.conf` (not redistributed, so you add them yourself).
 - Everything else downloads on first launch.
 
 ## How to use
@@ -59,7 +58,7 @@ opti_config FSR.UpscalerIndex=0 FSR.Fsr4GpuSupport=2
 | `scb.conf` | Global defaults: defines `opti_config`, runs the plugin reset, sets MangoHud, auto resolution/HDR/VRR, gamescope `--fullscreen --mangoapp`. Sources `lib/optipatcher.sh` when OptiScaler is on. | Always sourced by ScopeBuddy |
 | `noscope.conf` | Wayland (`PROTON_ENABLE_WAYLAND=1`) plus `scb.conf`. | — |
 | `fsr4.conf` | Enables the low-latency layer and `PROTON_FSR4_UPGRADE`. Forces OptiScaler onto the INT8 FSR 4 model (`Fsr4GpuSupport=2`), since RDNA3 is otherwise detected as unsupported. | OptiScaler |
-| `fsr412.conf` | Copies AMD's official FSR 4.1.2 DLLs into the prefix's OptiScaler folder. | `PROTON_USE_OPTISCALER=nightly`, DLLs in `$SCB_DLLS/fsr4-4.1.2/` |
+| `fsr4-sdk.conf` | Copies AMD's official FSR 4 DLLs (FidelityFX-SDK `signedbin`, now 4.1.2) into the prefix's OptiScaler folder. Downloaded and kept up to date automatically; pin a version with `FSR4SDK_REF`. `fsr412.conf` is a stub that sources it. | `PROTON_USE_OPTISCALER=nightly`. Not needed with `venom.conf` / `opennr.conf`. |
 | `fsr-multi.conf` | Installs extra upscalers as OptiScaler "custom" entries. `cyboman-*` are faster FSR 4.1.1/4.1.2 builds, exact or lossy. `hlx-fsr4` is HelixSR's FSR 4 DLL. `hlx-dlss` is HelixSR's DLSS network, once you have built it. Kept up to date automatically. | `PROTON_USE_OPTISCALER=nightly` |
 | `cyboman.conf` | Faster FSR 4.1.1 INT8 shaders from `zgauthier2000/fsr4-shader-performance-overrides`. `override` mode uses vkd3d shader replacement. `dll` mode swaps the patched DLL into Proton's OptiScaler. `auto` picks one. | Nothing to install: override mode downloads the shader sets itself. Not for RDNA4. |
 | `mlfg.conf` | Forces FSR 4 (ML) frame generation instead of the FSR 3.1 fallback, with the RDNA3 FP8-to-FP16 workaround. Sets `FSR.FGIndex=0` under OptiScaler nightly. | Also needs `fsr4.conf` |
@@ -82,10 +81,10 @@ The confs are thin. Each one sources a script of the same name in `lib/`, and th
 | `optiscaler-reset.sh` | Removes the plugins and DLLs our confs installed, at the start of each launch. Skip it with `SCB_NO_RESET=1`. |
 | `optipatcher.sh` | Updates OptiPatcher every 6 hours and installs it in the prefix. Skip it with `SCB_NO_OPTIPATCHER=1`. |
 | `cyboman.sh`, `cyboman-release.sh` | Logic and release lookup for `cyboman.conf` and `fsr-multi.conf`. |
-| `fsr-multi.sh`, `fsr412.sh`, `mfgunlocker.sh`, `opennr.sh`, `venom.sh`, `luma.sh` | Logic for the conf of the same name. |
+| `fsr-multi.sh`, `fsr4-sdk.sh`, `mfgunlocker.sh`, `opennr.sh`, `venom.sh`, `luma.sh` | Logic for the conf of the same name. |
 
 ## Files and logs
 
 - Downloads: `~/.local/share/scopebuddy-dlls/<component>/` (`$SCB_DLLS`).
-- Logs: `~/.config/scopebuddy/<conf>.log` (`cyboman`, `fsr-multi`, `opennr`, `venom`, `luma`).
+- Logs: `~/.config/scopebuddy/<conf>.log` (`cyboman`, `fsr-multi`, `fsr4-sdk`, `opennr`, `venom`, `luma`).
 - Per-game switches go in launch options before `scb`: `SCB_NO_RESET=1`, `SCB_NO_OPTIPATCHER=1`.
